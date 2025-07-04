@@ -1545,7 +1545,7 @@ int main(int argc, char **argv)
     }
     
     if (file_flag) {
-        fix_file = fopen(file_name, "r");              
+        fix_file = fopen(file_name, "rx");              
         if (fix_file == NULL) {
             fprintf(stderr, "Failed to open the fix file: %s\n", file_name);
             return(1);
