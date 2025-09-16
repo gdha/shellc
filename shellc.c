@@ -16,6 +16,7 @@
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -1324,13 +1325,23 @@ int main(int argc, char **argv)
     }
 
     if (inner_flag || anti_flag) {        
-        stat(fullname, &status);
-        script_length = status.st_size;
-        script = fopen(fullname, "rb");
-        if (script == NULL) {
+        int fd = open(fullname, O_RDONLY);
+        if (fd == -1) {
             fprintf(stderr, "Failed to open the file: %s\n", fullname);
             goto finish;
-        }   
+        }
+        if (fstat(fd, &status) == -1) {
+            fprintf(stderr, "Failed to get file status: %s\n", fullname);
+            close(fd);
+            goto finish;
+        }
+        script_length = status.st_size;
+        script = fdopen(fd, "rb");
+        if (script == NULL) {
+            fprintf(stderr, "Failed to associate stream with the file: %s\n", fullname);
+            close(fd);
+            goto finish;
+        }
     }
 
     fprintf(out, "static const unsigned char interpreter[] = {\n");    
