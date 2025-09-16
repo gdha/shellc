@@ -1561,7 +1561,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "Failed to open the fix file: %s\n", file_name);
             return(1);
         }
-        stat(file_name, &status);
+        fstat(fileno(fix_file), &status);
         length = status.st_size;
         k = 0;
         for (j = 0; j < status.st_size; j++) {
