@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <getopt.h>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
@@ -1556,7 +1557,7 @@ int main(int argc, char **argv)
     }
     
     if (file_flag) {
-        fix_file = fopen(file_name, "rx");              
+        fix_file = fopen(file_name, "r");              
         if (fix_file == NULL) {
             fprintf(stderr, "Failed to open the fix file: %s\n", file_name);
             return(1);
