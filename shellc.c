@@ -316,7 +316,7 @@ static const char *first[] = {
     "#ifndef PATH_MAX",
     "#define PATH_MAX 4096",
     "#endif",
-    ""
+    "",
     "#define FF(x, y, z) ((x) ^ (y) ^ (z))",
     "#define GG(x, y, z) (((x) & (y)) | ((x) & (z)) | ((y) & (z)))",
     "#define HH(x, y, z) (((x) & (y)) | ((~(x)) & (z)))",
@@ -519,7 +519,7 @@ static const char *first[] = {
     "    len = strlen(path);",
     "    for (i = 0; i <= len; i++) {",
     "        if(i == len || path[i] == ':') {",
-    "            strcat(name, \"/\");",\
+    "            strcat(name, \"/\");",
     "            strcat(name, command);",
     "            if (access(name, X_OK) == 0) {",
     "                strcpy(fullname, name);",
@@ -969,6 +969,30 @@ void function(int order, int x, int y, char *str)
     }
 }
 
+/*Write a string to the output as a properly escaped C string literal body.
+  Does not emit the surrounding double quotes. Prevents user-controlled input
+  (command, interpreter, parameter, message) from breaking out of the generated
+  C string literal or injecting code into the generated program.*/
+void emit_c_string(FILE *out, const char *str)
+{
+    const unsigned char *p = (const unsigned char *) str;
+    for (; *p; p++) {
+        switch (*p) {
+            case '"':  fputs("\\\"", out); break;
+            case '\\': fputs("\\\\", out); break;
+            case '\n': fputs("\\n", out);  break;
+            case '\r': fputs("\\r", out);  break;
+            case '\t': fputs("\\t", out);  break;
+            default:
+                if (*p < 0x20 || *p == 0x7f) {
+                    fprintf(out, "\\%03o", *p);
+                } else {
+                    fputc(*p, out);
+                }
+        }
+    }
+}
+
 void free_args(char **args, int len)
 {
     int i;
@@ -1191,7 +1215,6 @@ int main(int argc, char **argv)
         goto finish;          
     }
 
-    length = strlen(getenv("PATH")) + strlen(command) + 1;
     if (inner_flag || anti_flag) {
         if(which(command, fullname)) {
             goto finish; 
@@ -1368,9 +1391,13 @@ int main(int argc, char **argv)
     fprintf(out, "};\n");
 
     if (inner_flag) {     
-        fprintf(out, "static const char *command = \"%s\";\n", interpreter);  
+        fprintf(out, "static const char *command = \"");
+        emit_c_string(out, interpreter);
+        fprintf(out, "\";\n");
     } else {
-        fprintf(out, "static const char *command = \"%s\";\n", command);     
+        fprintf(out, "static const char *command = \"");
+        emit_c_string(out, command);
+        fprintf(out, "\";\n");
     }
     fprintf(out, "static const short xbash = %d;\n", xbash_flag);    
     fprintf(out, "static const char *digest = \"%s\";\n", digest); 
@@ -1383,7 +1410,9 @@ int main(int argc, char **argv)
         fprintf(out, "static const char *date_str = \"%s\";\n", "99991231");     
     }
     if (message_flag) {
-        fprintf(out, "static const char *message = \"%s\";\n", message);    
+        fprintf(out, "static const char *message = \"");
+        emit_c_string(out, message);
+        fprintf(out, "\";\n");
     } else {
         message = strdup("The program has expired");
         fprintf(out, "static const char *message = \"%s\";\n", "The program has expired");     
@@ -1608,7 +1637,9 @@ int main(int argc, char **argv)
     
     if (para_flag) {
         fprintf(out, "%s\n", "    args[j++] = strdup(command);"); 
-        fprintf(out, "    args[j++] = strdup(\"%s\");\n", parameter);     
+        fprintf(out, "    args[j++] = strdup(\"");
+        emit_c_string(out, parameter);
+        fprintf(out, "\");\n");
     } else if (!strcmp(command, "node")) {
         fprintf(out, "%s\n", "    args[j++] = strdup(command);"); 
         fprintf(out, "%s\n", "    args[j++] = strdup(\"--preserve-symlinks-main\");"); 
